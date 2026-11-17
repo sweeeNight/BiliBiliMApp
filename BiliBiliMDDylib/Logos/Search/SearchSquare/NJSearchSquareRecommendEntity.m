@@ -14,7 +14,7 @@
 }
 
 - (NSDictionary *)handleData:(NSMutableDictionary *)data {
-    return nil;
+    return data;
 }
 
 @end

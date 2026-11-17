@@ -1,0 +1,183 @@
+name: Build BiliBili 8.76.0 IPA
+
+on:
+  workflow_dispatch:
+    inputs:
+      app_url:
+        description: '8.76.0 decrypted .ipa/.zip URL (optional if already in TargetApp)'
+        required: false
+        type: string
+      release_tag:
+        description: 'Fallback Release containing bili-universal-8.76.0.zip'
+        required: false
+        default: inputs-8.76.0
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    # Legacy MonkeyDev includes Intel macOS tools.
+    runs-on: macos-15-intel
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    env:
+      THEOS: /opt/theos
+      MonkeyDevPath: /opt/MonkeyDev
+      MonkeyDevTheosPath: /opt/theos
+      DEVELOPER_DIR: /Applications/Xcode_16.4.app/Contents/Developer
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+          persist-credentials: false
+
+      - name: Prepare decrypted app
+        env:
+          APP_URL: ${{ inputs.app_url || secrets.DECRYPTED_APP_URL }}
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          set -euo pipefail
+          mkdir -p build-logs BiliBiliMD/TargetApp
+          if [[ -n "$APP_URL" ]]; then
+            curl --fail --location --retry 3 --output "$RUNNER_TEMP/target-app.zip" "$APP_URL"
+            ditto -x -k "$RUNNER_TEMP/target-app.zip" BiliBiliMD/TargetApp
+          else
+            shopt -s nullglob
+            archives=(BiliBiliMD/TargetApp/*.zip BiliBiliMD/TargetApp/*.ipa)
+            if (( ${#archives[@]} > 1 )); then
+              echo '::error::Keep only one input archive in TargetApp.'
+              exit 1
+            fi
+            for archive in "${archives[@]}"; do
+              ditto -x -k "$archive" BiliBiliMD/TargetApp
+            done
+            if (( ${#archives[@]} == 0 )) && [[ -z "$(find BiliBiliMD/TargetApp -type d -name '*.app' -print -quit)" ]]; then
+              gh release download "${RELEASE_TAG:-inputs-8.76.0}" \
+                --pattern 'bili-universal-8.76.0.zip' --dir "$RUNNER_TEMP"
+              ditto -x -k "$RUNNER_TEMP/bili-universal-8.76.0.zip" BiliBiliMD/TargetApp
+            fi
+          fi
+          python3 - <<'PY'
+          import os, pathlib, plistlib
+          root = pathlib.Path('BiliBiliMD/TargetApp')
+          apps = [p for p in root.rglob('*.app')
+                  if not any(parent.suffix == '.app' for parent in p.parents)]
+          if len(apps) != 1:
+              raise SystemExit('Expected exactly one decrypted app. Upload an archive or provide app_url; .app is gitignored.')
+          app = apps[0]
+          with (app / 'Info.plist').open('rb') as f:
+              info = plistlib.load(f)
+          if info.get('CFBundleShortVersionString') != '8.76.0':
+              raise SystemExit('This branch requires BiliBili 8.76.0.')
+          binary = app / info['CFBundleExecutable']
+          if not binary.is_file():
+              raise SystemExit('Missing main executable')
+          # Git/Windows ZIP uploads may lose executable permission bits.
+          magics = {b'\xcf\xfa\xed\xfe', b'\xce\xfa\xed\xfe', b'\xfe\xed\xfa\xcf',
+                    b'\xfe\xed\xfa\xce', b'\xca\xfe\xba\xbe', b'\xca\xfe\xba\xbf'}
+          for p in app.rglob('*'):
+              if p.is_file() and not p.is_symlink():
+                  with p.open('rb') as f:
+                      if f.read(4) in magics:
+                          p.chmod(p.stat().st_mode | 0o111)
+          with open(os.environ['GITHUB_ENV'], 'a') as f:
+              f.write(f'TARGET_APP={app.resolve()}\nTARGET_EXECUTABLE={binary.resolve()}\n')
+          print('Input app version:', info['CFBundleShortVersionString'])
+          PY
+          TARGET_EXECUTABLE="$(sed -n 's/^TARGET_EXECUTABLE=//p' "$GITHUB_ENV")"
+          xcodebuild -version | tee build-logs/xcode.txt
+          xcrun otool -l "$TARGET_EXECUTABLE" > build-logs/input-load-commands.txt
+          if awk '$1 == "cryptid" && $2 != "0" {found=1} END {exit !found}' build-logs/input-load-commands.txt; then
+            echo '::error::The input app is encrypted; supply a decrypted app.'
+            exit 1
+          fi
+
+      - name: Install legacy build dependencies
+        run: |
+          set -euo pipefail
+          # Use dependency history matching this January 2026 source revision.
+          # Current MonkeyDev has a different runtime/toolchain; do not use its master build.
+          sudo mkdir -p /opt/MonkeyDev /opt/theos
+          sudo chown -R "$(id -un):$(id -gn)" /opt/MonkeyDev /opt/theos
+          git clone --filter=blob:none https://github.com/AloneMonkey/MonkeyDev.git /opt/MonkeyDev
+          md_ref=$(git -C /opt/MonkeyDev rev-list -1 --before='2026-01-03T00:00:00Z' origin/master)
+          test -n "$md_ref"
+          git -C /opt/MonkeyDev checkout --detach "$md_ref"
+          git clone --filter=blob:none https://github.com/theos/theos.git /opt/theos
+          theos_ref=$(git -C /opt/theos rev-list -1 --before='2026-01-03T00:00:00Z' origin/master)
+          test -n "$theos_ref"
+          git -C /opt/theos checkout --detach "$theos_ref"
+          git -C /opt/theos submodule update --init --recursive
+          chmod +x /opt/MonkeyDev/bin/*
+          echo /opt/MonkeyDev/bin >> "$GITHUB_PATH"
+          echo /opt/theos/bin >> "$GITHUB_PATH"
+          printf 'MonkeyDev: %s\nTheos: %s\n' "$md_ref" "$theos_ref" | tee build-logs/dependencies.txt
+          test -f /opt/theos/Prefix.pch
+          test -f /opt/MonkeyDev/Frameworks/libsubstrate.dylib
+          # Legacy pack.sh signs even when Xcode signing is disabled. Skip only
+          # its signing invocation in this temporary CI dependency installation.
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('/opt/MonkeyDev/Tools/pack.sh')
+          original = p.read_text()
+          guard = '\nif [[ "${1:-}" == codesign && "${CODE_SIGNING_ALLOWED:-}" == NO ]]; then exit 0; fi\n'
+          if original.startswith('#!'):
+              first, rest = original.split('\n', 1)
+              p.write_text(first + '\n' + guard + rest)
+          else:
+              p.write_text('#!/bin/bash\n' + guard + original)
+          PY
+
+      - name: Build Release app without signing
+        run: |
+          set -euo pipefail
+          xcodebuild \
+            -project BiliBiliMD.xcodeproj \
+            -scheme BiliBiliMD \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath "$RUNNER_TEMP/BiliBiliBuild" \
+            ARCHS=arm64 ONLY_ACTIVE_ARCH=NO \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY= DEVELOPMENT_TEAM= \
+            ENABLE_USER_SCRIPT_SANDBOXING=NO \
+            build 2>&1 | tee build-logs/xcodebuild.log
+
+      - name: Verify injection and package IPA
+        run: |
+          set -euo pipefail
+          app="$RUNNER_TEMP/BiliBiliBuild/Build/Products/Release-iphoneos/BiliBiliMD.app"
+          test -f "$app/Frameworks/libBiliBiliMDDylib.dylib"
+          test -f "$app/Frameworks/libsubstrate.dylib"
+          executable=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$app/Info.plist")
+          xcrun otool -L "$app/$executable" | tee build-logs/output-libraries.txt
+          grep -F '@executable_path/Frameworks/libBiliBiliMDDylib.dylib' build-logs/output-libraries.txt
+          mkdir -p "$RUNNER_TEMP/ipa/Payload" artifacts
+          ditto "$app" "$RUNNER_TEMP/ipa/Payload/BiliBiliMD.app"
+          (cd "$RUNNER_TEMP/ipa" && ditto -c -k --keepParent Payload "$GITHUB_WORKSPACE/artifacts/BiliBili-8.76.0-3x-unsigned.ipa")
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: BiliBili-8.76.0-3x-unsigned
+          path: artifacts/*.ipa
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+
+      - name: Upload build logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs
+          path: build-logs/
+          if-no-files-found: ignore
+          retention-days: 7
