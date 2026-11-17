@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A87600000000000000000001 /* NJMineDataItem.m in Sources */ = {isa = PBXBuildFile; fileRef = A87600000000000000000003 /* NJMineDataItem.m */; };
+		A87600000000000000000002 /* NJMineDataHandler.m in Sources */ = {isa = PBXBuildFile; fileRef = A87600000000000000000005 /* NJMineDataHandler.m */; };
 		BF09B2632E4DDEE000160C03 /* Security.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BF09B2622E4DDEE000160C03 /* Security.framework */; };
 		BF09B2652E4DDEF500160C03 /* libiconv.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = BF09B2642E4DDEF500160C03 /* libiconv.tbd */; };
 		BF09B2672E4DDF0A00160C03 /* libz.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = BF09B2662E4DDF0A00160C03 /* libz.tbd */; };
@@ -282,6 +284,10 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		A87600000000000000000003 /* NJMineDataItem.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = NJMineDataItem.m; sourceTree = "<group>"; };
+		A87600000000000000000004 /* NJMineDataItem.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NJMineDataItem.h; sourceTree = "<group>"; };
+		A87600000000000000000005 /* NJMineDataHandler.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = NJMineDataHandler.m; sourceTree = "<group>"; };
+		A87600000000000000000006 /* NJMineDataHandler.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NJMineDataHandler.h; sourceTree = "<group>"; };
 		BF09B2622E4DDEE000160C03 /* Security.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Security.framework; path = Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/System/Library/Frameworks/Security.framework; sourceTree = DEVELOPER_DIR; };
 		BF09B2642E4DDEF500160C03 /* libiconv.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libiconv.tbd; path = Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/lib/libiconv.tbd; sourceTree = DEVELOPER_DIR; };
 		BF09B2662E4DDF0A00160C03 /* libz.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libz.tbd; path = Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/usr/lib/libz.tbd; sourceTree = DEVELOPER_DIR; };
@@ -600,6 +606,17 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		A87600000000000000000007 /* Mine */ = {
+			isa = PBXGroup;
+			children = (
+				A87600000000000000000004 /* NJMineDataItem.h */,
+				A87600000000000000000003 /* NJMineDataItem.m */,
+				A87600000000000000000006 /* NJMineDataHandler.h */,
+				A87600000000000000000005 /* NJMineDataHandler.m */,
+			);
+			path = Mine;
+			sourceTree = "<group>";
+		};
 		BF0D02FE2DEDA95900115365 = {
 			isa = PBXGroup;
 			children = (
@@ -1210,6 +1227,7 @@
 				BFE0C19F2F076AFF00366DB3 /* Dynamic */,
 				BFE0C1EB2F076AFF00366DB3 /* Home */,
 				BFE0C1EE2F076AFF00366DB3 /* Launch */,
+				A87600000000000000000007 /* Mine */,
 				BFE0C1F52F076AFF00366DB3 /* Network */,
 				BFE0C2012F076AFF00366DB3 /* Search */,
 				BFE0C2132F076AFF00366DB3 /* Setting */,
@@ -1602,6 +1620,8 @@
 				BFE0C2CB2F076AFF00366DB3 /* SVProgressHUD.m in Sources */,
 				BFE0C2CC2F076AFF00366DB3 /* NJSearchSquareCardHandler.m in Sources */,
 				BFE0C2CD2F076AFF00366DB3 /* NJApiDataManger.m in Sources */,
+				A87600000000000000000001 /* NJMineDataItem.m in Sources */,
+				A87600000000000000000002 /* NJMineDataHandler.m in Sources */,
 				BFE0C2CE2F076AFF00366DB3 /* NJLiveIndexFeedActivityCardV1Entity.m in Sources */,
 				BFE0C2CF2F076AFF00366DB3 /* UIColor+NJColor.m in Sources */,
 				BFE0C2D02F076AFF00366DB3 /* NJShareChannelsDataItem.m in Sources */,

@@ -46,6 +46,24 @@
             [items removeAllObjects];
             [items addObjectsFromArray:newItems];
         }
+        // 补回 8.76.0 后续版本的导航过滤规则。
+        for (NSString *section in @[@"top", @"bottom"]) {
+            id items = allDataDic[@"data"][section];
+            if (![items isKindOfClass:[NSArray class]]) {
+                continue;
+            }
+            NSArray *hiddenTabIds = [section isEqualToString:@"bottom"]
+                ? @[@"publish", @"会员购Bottom"] : @[@"游戏中心Top"];
+            NSMutableArray *newItems = [NSMutableArray array];
+            for (id item in items) {
+                if ([item isKindOfClass:[NSDictionary class]] &&
+                    [hiddenTabIds containsObject:item[@"tab_id"]]) {
+                    continue;
+                }
+                [newItems addObject:item];
+            }
+            allDataDic[@"data"][section] = newItems;
+        }
         NSError *serializationError = nil;
         // 序列化为 JSON Data
         NSData *jsonData = [NSJSONSerialization dataWithJSONObject:allDataDic
