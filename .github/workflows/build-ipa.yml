@@ -50,15 +50,16 @@ jobs:
             ditto -x -k "$RUNNER_TEMP/target-app.zip" BiliBiliMD/TargetApp
           else
             shopt -s nullglob
-            archives=(BiliBiliMD/TargetApp/*.zip BiliBiliMD/TargetApp/*.ipa)
-            if (( ${#archives[@]} > 1 )); then
+            # Positional parameters handle zero matches under Bash 3.2 + set -u.
+            set -- BiliBiliMD/TargetApp/*.zip BiliBiliMD/TargetApp/*.ipa
+            if (( $# > 1 )); then
               echo '::error::Keep only one input archive in TargetApp.'
               exit 1
             fi
-            for archive in "${archives[@]}"; do
+            for archive in "$@"; do
               ditto -x -k "$archive" BiliBiliMD/TargetApp
             done
-            if (( ${#archives[@]} == 0 )) && [[ -z "$(find BiliBiliMD/TargetApp -type d -name '*.app' -print -quit)" ]]; then
+            if (( $# == 0 )) && [[ -z "$(find BiliBiliMD/TargetApp -type d -name '*.app' -print -quit)" ]]; then
               gh release download "${RELEASE_TAG:-inputs-8.76.0}" \
                 --pattern 'bili-universal-8.76.0.zip' --dir "$RUNNER_TEMP"
               ditto -x -k "$RUNNER_TEMP/bili-universal-8.76.0.zip" BiliBiliMD/TargetApp
