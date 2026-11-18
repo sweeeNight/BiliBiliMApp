@@ -1,5 +1,11 @@
 # BiliBiliMApp
 
+fork原项目而来，选择`8.76.0`这个有**视频三倍速**功能的客户端，广告规则取自原仓库中仍适配 8.76.0 的 `37b8d31`，个人只添加了偏好改动：恢复了搜索页面**“搜索发现”**这个被过滤的栏目。
+
+以下是未修改原文：
+
+*****************************
+
 ![Platform](https://img.shields.io/badge/platform-iOS%2CiPadOS-blue.svg)
 [![Release](https://img.shields.io/github/v/release/TouchFriend/BiliBiliMApp?color=brightgreen)](https://github.com/TouchFriend/BiliBiliMApp/releases)
 ![Support](https://img.shields.io/badge/support-bilibili%208.41.0+-blue.svg)
